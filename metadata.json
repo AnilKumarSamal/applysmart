@@ -1,0 +1,7 @@
+{
+  "name": "ApplySmart",
+  "description": "Prepare tailored job applications with resume optimization, cover letters, and recruiter outreach.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
