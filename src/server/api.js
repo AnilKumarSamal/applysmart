@@ -1,14 +1,20 @@
-import { GoogleGenAI } from '@google/genai';
-import dotenv from 'dotenv';
+import { GoogleGenAI } from "@google/genai";
+import dotenv from "dotenv";
 dotenv.config();
 export async function processApplicationAnalysis(payload) {
-    const { jobDescription, resumeFileName, resumeText, resumeFileBase64, resumeMimeType } = payload;
-    if (!jobDescription || (!resumeText && !resumeFileBase64)) {
-        throw new Error('Both resume content and job description are required.');
-    }
-    const apiKey = process.env.GEMINI_API_KEY;
-    const ai = new GoogleGenAI({ apiKey });
-    const systemInstruction = `You are ApplySmart's senior job application engine.
+  const {
+    jobDescription,
+    resumeFileName,
+    resumeText,
+    resumeFileBase64,
+    resumeMimeType,
+  } = payload;
+  if (!jobDescription || (!resumeText && !resumeFileBase64)) {
+    throw new Error("Both resume content and job description are required.");
+  }
+  const apiKey = process.env.GEMINI_API_KEY;
+  const ai = new GoogleGenAI({ apiKey });
+  const systemInstruction = `You are ApplySmart's senior job application engine.
 Your mission is to generate a comprehensive, truthful, tailored job application package strictly based on the candidate's actual uploaded resume and target job description.
 
 STRICT SOURCE-OF-TRUTH AND ANTI-HALLUCINATION RULES:
@@ -26,13 +32,13 @@ STRICT SOURCE-OF-TRUTH AND ANTI-HALLUCINATION RULES:
    - Body must include introduction, relevant experience, relevant skills, enthusiasm for the role, and reference that the resume is attached.
    - Do NOT invent recruiter names or fake email addresses.
 7. Return clean, valid JSON matching the exact specified schema.`;
-    const promptText = `
+  const promptText = `
 === TARGET JOB DESCRIPTION ===
 ${jobDescription.trim()}
 
 === CANDIDATE RESUME FILE INFO ===
-File Name: ${resumeFileName || 'Candidate_Resume'}
-${resumeText ? `=== EXTRACTED RESUME TEXT ===\n${resumeText.trim()}` : ''}
+File Name: ${resumeFileName || "Candidate_Resume"}
+${resumeText ? `=== EXTRACTED RESUME TEXT ===\n${resumeText.trim()}` : ""}
 
 Generate the complete tailored application package as a valid JSON object matching this exact structure:
 {
@@ -132,88 +138,121 @@ Generate the complete tailored application package as a valid JSON object matchi
   }
 }
 `;
-    const contents = [];
-    if (resumeFileBase64 && (!resumeText || resumeText.length < 50)) {
-        const cleanBase64 = resumeFileBase64.replace(/^data:[^;]+;base64,/, '');
-        contents.push({
-            role: 'user',
-            parts: [
-                {
-                    inlineData: {
-                        mimeType: resumeMimeType || 'application/pdf',
-                        data: cleanBase64,
-                    },
-                },
-                {
-                    text: promptText,
-                },
-            ],
+  const contents = [];
+  if (resumeFileBase64 && (!resumeText || resumeText.length < 50)) {
+    const cleanBase64 = resumeFileBase64.replace(/^data:[^;]+;base64,/, "");
+    contents.push({
+      role: "user",
+      parts: [
+        {
+          inlineData: {
+            mimeType: resumeMimeType || "application/pdf",
+            data: cleanBase64,
+          },
+        },
+        {
+          text: promptText,
+        },
+      ],
+    });
+  } else {
+    contents.push({
+      role: "user",
+      parts: [
+        {
+          text: promptText,
+        },
+      ],
+    });
+  }
+  const candidateModels = [
+    "gemini-3.7-flash",
+    "gemini-flash-latest",
+    "gemini-3.1-flash-lite",
+  ];
+  let response = null;
+  let lastError = null;
+  for (const modelName of candidateModels) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+          },
         });
-    }
-    else {
-        contents.push({
-            role: 'user',
-            parts: [
-                {
-                    text: promptText,
-                },
-            ],
-        });
-    }
-    const candidateModels = ['gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
-    let response = null;
-    let lastError = null;
-    for (const modelName of candidateModels) {
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            try {
-                response = await ai.models.generateContent({
-                    model: modelName,
-                    contents,
-                    config: {
-                        systemInstruction,
-                        responseMimeType: 'application/json',
-                    },
-                });
-                if (response && response.text) {
-                    break;
-                }
-            }
-            catch (err) {
-                lastError = err;
-                const errStr = String(err?.message || err?.status || err || '');
-                const isTransient = err?.status === 503 ||
-                    err?.code === 503 ||
-                    errStr.includes('503') ||
-                    errStr.includes('high demand') ||
-                    errStr.includes('UNAVAILABLE') ||
-                    errStr.includes('429') ||
-                    errStr.includes('RESOURCE_EXHAUSTED') ||
-                    errStr.includes('Overloaded');
-                if (isTransient && attempt < 3) {
-                    await new Promise((resolve) => setTimeout(resolve, attempt * 1200 + Math.random() * 400));
-                    continue;
-                }
-                break;
-            }
-        }
         if (response && response.text) {
-            break;
+          break;
         }
-    }
-    if (!response || !response.text) {
-        if (lastError?.message?.includes('high demand') || lastError?.status === 503 || String(lastError).includes('503')) {
-            throw new Error('AI service is experiencing high demand. Please try again in a moment.');
+      } catch (err) {
+        lastError = err;
+        const errStr = String(err?.message || err?.status || err || "");
+        const isTransient =
+          err?.status === 503 ||
+          err?.code === 503 ||
+          errStr.includes("503") ||
+          errStr.includes("high demand") ||
+          errStr.includes("UNAVAILABLE") ||
+          errStr.includes("429") ||
+          errStr.includes("RESOURCE_EXHAUSTED") ||
+          errStr.includes("Overloaded");
+        if (isTransient && attempt < 3) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, attempt * 1200 + Math.random() * 400),
+          );
+          continue;
         }
-        throw lastError || new Error('No response generated by model');
+        break;
+      }
     }
-    const text = response.text;
+    if (response && response.text) {
+      break;
+    }
+  }
+  if (!response || !response.text) {
+    if (
+      lastError?.message?.includes("high demand") ||
+      lastError?.status === 503 ||
+      String(lastError).includes("503")
+    ) {
+      throw new Error(
+        "AI service is experiencing high demand. Please try again in a moment.",
+      );
+    }
+    throw lastError || new Error("No response generated by model");
+  }
+  const text = response.text;
+  try {
+    let cleaned = text.trim();
+
+    // Remove markdown code fences
+    cleaned = cleaned
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    // First attempt: direct JSON
     try {
-        const cleaned = text.trim().replace(/^```json\s*/, '').replace(/```\s*$/, '');
-        const parsed = JSON.parse(cleaned);
-        return parsed;
+      return JSON.parse(cleaned);
+    } catch {
+      // Continue to extract JSON object below
     }
-    catch (err) {
-        console.error('Failed to parse model JSON:', text);
-        throw new Error('Invalid JSON format received from analysis model');
+
+    // Find the first JSON object in the response
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+
+    if (start !== -1 && end !== -1 && end > start) {
+      const jsonCandidate = cleaned.slice(start, end + 1);
+      return JSON.parse(jsonCandidate);
     }
+
+    throw new Error("No valid JSON object found");
+  } catch (err) {
+    console.error("Failed to parse model JSON:", text);
+    throw new Error("Invalid JSON format received from analysis model");
+  }
 }
