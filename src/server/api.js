@@ -269,7 +269,7 @@ Sincerely,
   }
 
   // Free-tier-eligible models on Google AI Studio, tried in order.
-  const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
+  const candidateModels = ["gemini-3.6-flash"];
   let response = null;
   let lastError = null;
   for (const modelName of candidateModels) {
