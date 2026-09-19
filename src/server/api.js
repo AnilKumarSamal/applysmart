@@ -34,22 +34,31 @@ STRICT SOURCE-OF-TRUTH AND ANTI-HALLUCINATION RULES:
 4. For factual screening fields (Current CTC, Expected CTC, Notice Period, Total Experience, Relevant Experience, Current Location, Preferred Location):
    - Only fill in values that are EXPLICITLY present or mathematically calculated from dates in the resume.
    - If ANY factual item is not explicitly mentioned or verifiable, you MUST set its value exactly to "Please enter this information.". NEVER guess.
-5. In the Tailored Resume:
+
+FORMATTING & ALIGNMENT MANDATE FOR TAILORED RESUME & COVER LETTER:
+1. Do NOT use LaTeX tags or Markdown code blocks inside the string values. Use HTML elements inside Markdown to enforce absolute layout alignment.
+2. Header & Entry Alignment:
+   - Header must be centered using <div align="center">...</div>.
+   - EVERY work experience title line, project header, and education entry MUST use an HTML table wrapper to guarantee right-aligned dates and locations:
+     <table width="100%" border="0" cellpadding="0" cellspacing="0"><tr><td align="left"><strong>[Job Title / Degree]</strong> — <em>[Company / Institution]</em></td><td align="right"><em>[Dates / Location]</em></td></tr></table>
+   - Subheadings (Tech Stack / Details) must follow immediately on a new line in italics: <em>Tech Stack: [Technologies]</em>
+3. Section Dividers:
+   - Use horizontal rules (---) between major sections (SUMMARY, CORE COMPETENCIES, WORK EXPERIENCE, TECHNICAL SKILLS, EDUCATION).
+4. Competencies Layout:
+   - Format CORE COMPETENCIES as a Markdown table:
+     | Category | Details |
+     | :--- | :--- |
+     | **Integrations & APIs** | ... |
+5. Tailored Resume Bullet Points:
    - Preserve all real companies, job titles, dates, education, and projects from the candidate's resume.
-   - Reorder and rephrase bullet points to emphasize existing relevant technologies and accomplishments aligned with the job description.
-   - Every experience bullet MUST follow the X-Y-Z formula: Accomplished [X] as measured by [Y], by doing [Z]. Start each bullet with a strong action verb and weave in exact key phrases from the job description wherever truthfully applicable.
-   - The Professional Summary MUST be exactly 3 punchy sentences tailoring the candidate's top skills to the target role.
-   - Technical Skills MUST be grouped into clear categories (e.g. "Languages/Frameworks", "Tools/Platforms", plus any other categories the resume supports).
-6. In the Cover Letter:
-   - Format as: [Date] / Hiring Team / [Company Name] / (blank line) / Dear Hiring Team, / then exactly 3-4 paragraphs / Sincerely, / [Candidate Name].
-   - Paragraph 1: hook with genuine enthusiasm for the role and why this specific company aligns with the candidate's goals.
-   - Paragraph 2: connect the candidate's real technical highlights directly to the pain points/requirements in the job description.
-   - Paragraph 3: showcase soft skills, collaborative style, and dedication to quality, grounded in real resume evidence.
-   - No boilerplate fluff. No invented facts.
+   - Every experience bullet MUST follow the X-Y-Z formula: Accomplished [X] as measured by [Y], by doing [Z].
+   - The Professional Summary MUST be exactly 3-4 punchy sentences tailoring the candidate's top skills to the target role.
+6. Cover Letter Structure:
+   - Use the same centered header block as the resume at the top.
+   - Format: Date / Hiring Team / [Company Name] / Dear Hiring Team, / 3-4 structured paragraphs / Sincerely, / [Candidate Name].
 7. In the Recruiter Email:
-   - Subject line MUST follow the exact format: "Application — [Job Title] — [Candidate Name]"
+   - Subject line MUST follow the exact format: "Application — [Job Title] — [Candidate Name]".
    - Body must include introduction, relevant experience, relevant skills, enthusiasm for the role, and reference that the resume is attached.
-   - Do NOT invent recruiter names or fake email addresses.
 8. Return clean, valid JSON matching the exact specified schema.`;
 
   const promptText = `
@@ -116,9 +125,9 @@ Generate the complete tailored application package as a valid JSON object matchi
       }
     ],
     "certifications": ["<real certifications from resume, or empty array>"],
-    "fullTextResume": "<Complete tailored resume rendered as clean markdown using exactly this schema:\\n# [Full Name]\\n[Contact Info: Email | Phone | GitHub | LinkedIn]\\n\\n## Professional Summary\\n[3 sentence summary]\\n\\n## Technical Skills\\n- **Languages/Frameworks:** [...]\\n- **Tools/Platforms:** [...]\\n\\n## Experience\\n### [Job Title] | [Company Name] | [Dates]\\n- [X-Y-Z bullets]\\n\\n## Education / Certifications\\n- [Degree/Cert] | [Institution] | [Year]>"
+    "fullTextResume": "<Complete tailored resume formatted strictly according to the HTML/Markdown layout instructions below>",
+    "coverLetter": "<Complete cover letter formatted strictly according to the HTML/Markdown layout instructions below>"
   },
-  "coverLetter": "<The full cover letter as plain text, following exactly this structure with blank lines between blocks:\\n[Date]\\n\\nHiring Team\\n[Company Name]\\n\\nDear Hiring Team,\\n\\n[Paragraph 1 - hook/enthusiasm/company alignment]\\n\\n[Paragraph 2 - technical highlights vs JD pain points]\\n\\n[Paragraph 3 - soft skills, collaboration, quality]\\n\\nSincerely,\\n[Candidate Name]>",
   "applicationAnswers": {
     "screeningAnswers": [
       {
@@ -157,6 +166,79 @@ Generate the complete tailored application package as a valid JSON object matchi
     "body": "Hi [Hiring Team / Recruiter],\\n\\n[Candidate introduction and enthusiasm for the target role]\\n\\n[Paragraph detailing 2-3 core relevant accomplishments and skills directly from resume matching the role]\\n\\n[Closing expressing appreciation, noting the attached resume, and offering availability to connect]\\n\\nBest regards,\\n[Candidate Name]"
   }
 }
+
+=== MANDATORY LAYOUT INSTRUCTIONS FOR fullTextResume AND coverLetter ===
+
+1. fullTextResume FORMAT:
+Use centered top headers, horizontal rules (---) between sections, Markdown tables for Core Competencies, and HTML table wrappers for dual-aligned headers (Job Title on left, Date on right):
+
+<div align="center">
+  <h1>[Candidate Full Name]</h1>
+  <p><strong>[Primary Role Title] • [Core Tech 1] • [Core Tech 2] • [Core Tech 3]</strong></p>
+  <p>[Location] • [Phone] • <a href="mailto:[Email]">[Email]</a> • <a href="[LinkedIn URL]">[LinkedIn]</a></p>
+  <p><strong>[Availability Status / Notice Period if mentioned in resume]</strong></p>
+</div>
+
+---
+
+### SUMMARY
+[3-4 sentence professional summary tailored strictly from candidate's real background]
+
+---
+
+### CORE COMPETENCIES
+| Category | Details |
+| :--- | :--- |
+| **Integrations & APIs** | [Relevant tools/tech from resume] |
+| **Cloud & Infrastructure** | [Relevant cloud tech from resume] |
+| **DevOps & Security** | [Relevant DevOps tech from resume] |
+
+---
+
+### WORK EXPERIENCE
+
+<table width="100%" border="0" cellpadding="0" cellspacing="0"><tr><td align="left"><strong>[Job Title]</strong> — <em>[Company Name]</em></td><td align="right"><em>[Dates]</em></td></tr></table>
+*Tech Stack: [Technologies used]*
+- [X-Y-Z formula bullet point]
+- [X-Y-Z formula bullet point]
+
+---
+
+### TECHNICAL SKILLS
+- **Languages & Runtimes:** [Technologies]
+- **Cloud Infrastructure:** [Technologies]
+
+---
+
+### EDUCATION
+<table width="100%" border="0" cellpadding="0" cellspacing="0"><tr><td align="left"><strong>[Degree]</strong> — <em>[Institution]</em></td><td align="right"><em>[Years]</em></td></tr></table>
+
+
+2. coverLetter FORMAT:
+Use the same centered header block as the resume, followed by structured, unindented paragraphs with line breaks:
+
+<div align="center">
+  <h2>[Candidate Full Name]</h2>
+  <p>[Location] • [Phone] • <a href="mailto:[Email]">[Email]</a></p>
+</div>
+
+---
+
+**Date:** [Current Date]  
+**To:** Hiring Team, [Target Company]  
+
+**Subject:** Application for [Target Role Title]  
+
+Dear Hiring Team,
+
+[Paragraph 1: Clear hook and genuine interest in the role/company]
+
+[Paragraph 2: Detailed technical highlights directly connecting resume experience to JD pain points]
+
+[Paragraph 3: Soft skills, architectural rigor, testing, and team collaboration grounded in real resume evidence]
+
+Sincerely,  
+**[Candidate Name]**
 `;
   const contents = [];
   if (resumeFileBase64 && (!resumeText || resumeText.length < 50)) {
@@ -187,11 +269,7 @@ Generate the complete tailored application package as a valid JSON object matchi
   }
 
   // Free-tier-eligible models on Google AI Studio, tried in order.
-  const candidateModels = [
-    "gemini-flash-latest",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-  ];
+  const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
   let response = null;
   let lastError = null;
   for (const modelName of candidateModels) {
