@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 dotenv.config();
+
 export async function processApplicationAnalysis(payload) {
   const {
     jobDescription,
@@ -9,12 +10,20 @@ export async function processApplicationAnalysis(payload) {
     resumeFileBase64,
     resumeMimeType,
   } = payload;
+
   if (!jobDescription || (!resumeText && !resumeFileBase64)) {
     throw new Error("Both resume content and job description are required.");
   }
+
   const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "GEMINI_API_KEY is not set. Add it to your .env.local file.",
+    );
+  }
   const ai = new GoogleGenAI({ apiKey });
-  const systemInstruction = `You are ApplySmart's senior job application engine.
+
+  const systemInstruction = `You are ApplySmart's senior job application engine, an expert career coach and technical writer.
 Your mission is to generate a comprehensive, truthful, tailored job application package strictly based on the candidate's actual uploaded resume and target job description.
 
 STRICT SOURCE-OF-TRUTH AND ANTI-HALLUCINATION RULES:
@@ -27,11 +36,21 @@ STRICT SOURCE-OF-TRUTH AND ANTI-HALLUCINATION RULES:
 5. In the Tailored Resume:
    - Preserve all real companies, job titles, dates, education, and projects from the candidate's resume.
    - Reorder and rephrase bullet points to emphasize existing relevant technologies and accomplishments aligned with the job description.
-6. In the Recruiter Email:
+   - Every experience bullet MUST follow the X-Y-Z formula: Accomplished [X] as measured by [Y], by doing [Z]. Start each bullet with a strong action verb and weave in exact key phrases from the job description wherever truthfully applicable.
+   - The Professional Summary MUST be exactly 3 punchy sentences tailoring the candidate's top skills to the target role.
+   - Technical Skills MUST be grouped into clear categories (e.g. "Languages/Frameworks", "Tools/Platforms", plus any other categories the resume supports).
+6. In the Cover Letter:
+   - Format as: [Date] / Hiring Team / [Company Name] / (blank line) / Dear Hiring Team, / then exactly 3-4 paragraphs / Sincerely, / [Candidate Name].
+   - Paragraph 1: hook with genuine enthusiasm for the role and why this specific company aligns with the candidate's goals.
+   - Paragraph 2: connect the candidate's real technical highlights directly to the pain points/requirements in the job description.
+   - Paragraph 3: showcase soft skills, collaborative style, and dedication to quality, grounded in real resume evidence.
+   - No boilerplate fluff. No invented facts.
+7. In the Recruiter Email:
    - Subject line MUST follow the exact format: "Application — [Job Title] — [Candidate Name]"
    - Body must include introduction, relevant experience, relevant skills, enthusiasm for the role, and reference that the resume is attached.
    - Do NOT invent recruiter names or fake email addresses.
-7. Return clean, valid JSON matching the exact specified schema.`;
+8. Return clean, valid JSON matching the exact specified schema.`;
+
   const promptText = `
 === TARGET JOB DESCRIPTION ===
 ${jobDescription.trim()}
@@ -60,10 +79,10 @@ Generate the complete tailored application package as a valid JSON object matchi
       "linkedin": "linkedin url from resume if present, or ''",
       "portfolio": "github/portfolio url from resume if present, or ''"
     },
-    "professionalSummary": "<Tailored 3-4 sentence professional summary highlighting real background relevant to the target role>",
+    "professionalSummary": "<Exactly 3 punchy sentences tailoring real top skills to the target role>",
     "skillsGroups": [
       {
-        "category": "<e.g. Languages & Frameworks, Databases, Tools>",
+        "category": "<e.g. Languages/Frameworks, Tools/Platforms, Databases>",
         "skills": ["<real skills only>"]
       }
     ],
@@ -74,8 +93,8 @@ Generate the complete tailored application package as a valid JSON object matchi
         "location": "Location if present in resume",
         "duration": "Dates/tenure from resume",
         "bullets": [
-          "<Strong, tailored action bullet highlighting real accomplishments and relevant technologies from resume>",
-          "<Strong, tailored action bullet highlighting real responsibilities from resume>"
+          "<X-Y-Z formula bullet: strong action verb + accomplishment [X] + measured by [Y] + by doing [Z], using JD keywords where truthful>",
+          "<Another X-Y-Z formula bullet highlighting real responsibilities from resume>"
         ]
       }
     ],
@@ -96,9 +115,9 @@ Generate the complete tailored application package as a valid JSON object matchi
       }
     ],
     "certifications": ["<real certifications from resume, or empty array>"],
-    "fullTextResume": "<Complete formatted plain text version of the tailored resume with standard headers for quick copying>"
+    "fullTextResume": "<Complete tailored resume rendered as clean markdown using exactly this schema:\\n# [Full Name]\\n[Contact Info: Email | Phone | GitHub | LinkedIn]\\n\\n## Professional Summary\\n[3 sentence summary]\\n\\n## Technical Skills\\n- **Languages/Frameworks:** [...]\\n- **Tools/Platforms:** [...]\\n\\n## Experience\\n### [Job Title] | [Company Name] | [Dates]\\n- [X-Y-Z bullets]\\n\\n## Education / Certifications\\n- [Degree/Cert] | [Institution] | [Year]>"
   },
-  "coverLetter": "<A concise, professional 3-4 paragraph tailored cover letter addressing the target company and role, explaining candidate's real relevant background without boilerplate fluff>",
+  "coverLetter": "<The full cover letter as plain text, following exactly this structure with blank lines between blocks:\\n[Date]\\n\\nHiring Team\\n[Company Name]\\n\\nDear Hiring Team,\\n\\n[Paragraph 1 - hook/enthusiasm/company alignment]\\n\\n[Paragraph 2 - technical highlights vs JD pain points]\\n\\n[Paragraph 3 - soft skills, collaboration, quality]\\n\\nSincerely,\\n[Candidate Name]>",
   "applicationAnswers": {
     "screeningAnswers": [
       {
@@ -165,10 +184,12 @@ Generate the complete tailored application package as a valid JSON object matchi
       ],
     });
   }
+
+  // Free-tier-eligible models on Google AI Studio, tried in order.
   const candidateModels = [
-    "gemini-3.7-flash",
     "gemini-flash-latest",
-    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
   ];
   let response = null;
   let lastError = null;
@@ -215,10 +236,11 @@ Generate the complete tailored application package as a valid JSON object matchi
     if (
       lastError?.message?.includes("high demand") ||
       lastError?.status === 503 ||
-      String(lastError).includes("503")
+      String(lastError).includes("503") ||
+      String(lastError).includes("RESOURCE_EXHAUSTED")
     ) {
       throw new Error(
-        "AI service is experiencing high demand. Please try again in a moment.",
+        "AI service is experiencing high demand or you've hit the free-tier rate limit. Please try again in a moment.",
       );
     }
     throw lastError || new Error("No response generated by model");
